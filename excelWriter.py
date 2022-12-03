@@ -72,43 +72,73 @@ if __name__ == "__main__":
     for day in days:
         for hour in hours: slots.append(EmptySlot(day, hour))
 
-    student1 = Person("Allan", "Des Courtils", 1)
-    student2 = Person("Thibault", "Thomas", 2)
-    student3 = Person("Emilie", "Vey", 3)
-    student4 = Person("Nathan", "Peyronnet", 4)
-    student5 = Person("Benoit", "Kezel", 5)
+    # student1 = Person("Allan", "Des Courtils", 1)
+    # student2 = Person("Thibault", "Thomas", 2)
+    # student3 = Person("Emilie", "Vey", 3)
+    # student4 = Person("Nathan", "Peyronnet", 4)
+    # student5 = Person("Benoit", "Kezel", 5)
 
-    teacher1 = Teacher("Moahammed", "Haddad", 6, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
-    teacher2 = Teacher("Bastien", "Jerome", 7, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
-    teacher3 = Teacher("Valerie", "James", 8, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
-    teacher4 = Teacher("Florence", "Perraud", 9, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
-    teacher5 = Teacher("Stephane", "Bonnevay", 10, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
+    # teacher1 = Teacher("Moahammed", "Haddad", 6, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
+    # teacher2 = Teacher("Bastien", "Jerome", 7, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
+    # teacher3 = Teacher("Valerie", "James", 8, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
+    # teacher4 = Teacher("Florence", "Perraud", 9, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
+    # teacher5 = Teacher("Stephane", "Bonnevay", 10, [slots[random.randint(0, len(slots)-1)] for i in range(random.randint(0, len(slots)-1))])
 
-    apm1 = Apm("Eric", "Judor", 11)
-    apm2 = Apm("Anne", "Hathaway", 12)
-    apm3 = Apm("Jonathan", "Coen", 13)
-    apm4 = Apm("Robert", "De Nirot", 14)
+    # apm1 = Apm("Eric", "Judor", 11)
+    # apm2 = Apm("Anne", "Hathaway", 12)
+    # apm3 = Apm("Jonathan", "Coen", 13)
+    # apm4 = Apm("Robert", "De Nirot", 14)
 
-    group1 = Group(teacher1, apm2, student1)
-    group2 = Group(teacher1, apm1, student2)
-    group3 = Group(teacher2, apm3, student3)
-    group4 = Group(teacher2, apm4, student4)
-    group5 = Group(teacher3, apm4, student5)
+    # group1 = Group(teacher1, apm2, student1)
+    # group2 = Group(teacher1, apm1, student2)
+    # group3 = Group(teacher2, apm3, student3)
+    # group4 = Group(teacher2, apm4, student4)
+    # group5 = Group(teacher3, apm4, student5)
+
+    # for slot in slots:
+    #     sm.addSlot(slot)
+
+    # sm.addGroup(group1)
+    # sm.addGroup(group2)
+    # sm.addGroup(group3)
+    # sm.addGroup(group4)
+    # sm.addGroup(group5)
+
+    # sm.addTeacher(teacher1)
+    # sm.addTeacher(teacher2)
+    # sm.addTeacher(teacher3)
+    # sm.addTeacher(teacher4)
+    # sm.addTeacher(teacher5)
+
+    import names
+
+    students = list()
+    for i in range(10):
+        students.append(Person(names.get_first_name(), names.get_last_name(), i))
+
+    import copy
+
+    teachers = list()
+    for i in range(10):
+        contraintes = list()
+        for j in range(random.randint(0, len(slots)-1)):
+            contraintes.append(slots[random.randint(0, len(slots)-1)])
+        teachers.append(Teacher(names.get_first_name(), names.get_last_name(), i+10, contraintes))
+
+    apms = list()
+    for i in range(10):
+        apms.append(Apm(names.get_first_name(), names.get_last_name(), i+20))
+    
+    groups = list()
+    for i in range(10):
+        groups.append(Group(teachers[random.randint(0, 9)], apms[random.randint(0, 9)], students[i]))
 
     for slot in slots:
         sm.addSlot(slot)
 
-    sm.addGroup(group1)
-    sm.addGroup(group2)
-    sm.addGroup(group3)
-    sm.addGroup(group4)
-    sm.addGroup(group5)
-
-    sm.addTeacher(teacher1)
-    sm.addTeacher(teacher2)
-    sm.addTeacher(teacher3)
-    sm.addTeacher(teacher4)
-    sm.addTeacher(teacher5)
+    for i in range(10):
+        sm.addGroup(groups[i])
+        sm.addTeacher(teachers[i])
 
     
 

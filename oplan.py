@@ -149,7 +149,7 @@ class Schedule:
             if not slot.getTeacher(): emptySlot = True
             else: 
                 if currentDay == prevDay:
-                    if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getApm() == slot.getGroup().getApm(): score += 500
+                    if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getApm() == slot.getGroup().getApm(): score += 100
 
                     if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getTutor() == slot.getGroup().getTutor(): score += 2
 
@@ -385,7 +385,7 @@ if __name__ == '__main__':
     
     groups = list()
     for i in range(10):
-        groups.append(Group(teachers[i], apms[i], students[i]))
+        groups.append(Group(teachers[random.randint(0, 9)], apms[random.randint(0, 9)], students[i]))
 
     for slot in slots:
         sm.addSlot(slot)
