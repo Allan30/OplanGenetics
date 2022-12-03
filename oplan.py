@@ -42,7 +42,7 @@ class Teacher(Person):
         super().__init__(name, surname, id)
         self.constraints = constraints
 
-    def isFree(self, slot): return slot in self.constraints
+    def isFree(self, slot): return slot not in self.constraints
 
     def getRandomSlot(self, constraints):
         try:
@@ -73,6 +73,9 @@ class Group:
         # "┌──────────────────────────────┬───────┬───────┬───────┬───────┬───────┐\n"\
         # "│       │ 08:00 │ 09:45 │ 11:30 │ 14:00 │ 15:45 │\n"\
         # "├──────────────────────────────┼───────┼───────┼───────┼───────┼───────┤\n"\
+        print("┌──────────────────────────────┬───────┬───────┬───────┬───────┬───────┐")
+        print("│ Lundi │ 08:00 │ 08:50 │ 09:40 │ 10:30 │ 11:20 │ 12:10 │ 14:00 │ 14:50 │ 15:40 │ 16:30 │ 17:20 |")
+        print("├──────────────────────────────┼───────┼───────┼───────┼───────┼───────┤")
 
 class ScheduleManager:
 
@@ -146,7 +149,7 @@ class Schedule:
             if not slot.getTeacher(): emptySlot = True
             else: 
                 if currentDay == prevDay:
-                    if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getApm() == slot.getGroup().getApm(): score += 100
+                    if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getApm() == slot.getGroup().getApm(): score += 500
 
                     if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getTutor() == slot.getGroup().getTutor(): score += 2
 
@@ -158,6 +161,8 @@ class Schedule:
                 
                 if slot.getGroup().getTutor().isFree(slot.getSlot()): score += 50
                 if slot.getTeacher().isFree(slot.getSlot()): score += 50
+
+            prevDay = currentDay
 
         # nextIndex = 1
         # for index, slot in enumerate(self.schedule):
@@ -352,33 +357,13 @@ if __name__ == '__main__':
     
     sm = ScheduleManager()
 
-    slot1 = EmptySlot("Lundi", "M1")
-    slot2 = EmptySlot("Lundi", "M2")
-    slot3 = EmptySlot("Lundi", "A1")
-    slot4 = EmptySlot("Lundi", "A2")
+    slots = list()
+    days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
+    hours = ["08:50", "09:40", "10:30", "11:20", "14:00", "14:50", "15:40", "16:30"]
 
-    slot5 = EmptySlot("Mardi", "M1")
-    slot6 = EmptySlot("Mardi", "M2")
-    slot7 = EmptySlot("Mardi", "A1")
-    slot8 = EmptySlot("Mardi", "A2")
-
-    slot9 = EmptySlot("Mercredi", "M1")
-    slot10 = EmptySlot("Mercredi", "M2")
-    slot11 = EmptySlot("Mercredi", "A1")
-    slot12 = EmptySlot("Mercredi", "A2")
-
-    slot13 = EmptySlot("Jeudi", "M1")
-    slot14 = EmptySlot("Jeudi", "M2")
-    slot15 = EmptySlot("Jeudi", "A1")
-    slot16 = EmptySlot("Jeudi", "A2")
-
-    slot17 = EmptySlot("Vendredi", "M1")
-    slot18 = EmptySlot("Vendredi", "M2")
-    slot19 = EmptySlot("Vendredi", "A1")
-    slot20 = EmptySlot("Vendredi", "A2")
-
-    slots = [slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9, slot10, slot11, slot12, slot13, slot14, slot15, slot16, slot17, slot18, slot19, slot20]
-
+    for day in days:
+        for hour in hours: slots.append(EmptySlot(day, hour))  
+        
     import names
 
     students = list()
@@ -401,45 +386,9 @@ if __name__ == '__main__':
     groups = list()
     for i in range(10):
         groups.append(Group(teachers[i], apms[i], students[i]))
-    
-
-    # student1 = Person("Allan", "Des Courtils", 1)
-    # student2 = Person("Thibault", "Thomas", 2)
-    # student3 = Person("Emilie", "Vey", 3)
-    # student4 = Person("Nathan", "Peyronnet", 4)
-    # student5 = Person("Benoit", "Kezel", 5)
-
-    # teacher1 = Teacher("Moahammed", "Haddad", 6, [slot1, slot2, slot3, slot4])
-    # teacher2 = Teacher("Bastien", "Jerome", 7, [slot2, slot4, slot6, slot8, slot10, slot12, slot14, slot16, slot20])
-    # teacher3 = Teacher("Valerie", "James", 8, [slot1, slot3, slot5, slot7, slot9, slot11, slot13, slot15, slot17, slot19])
-    # teacher4 = Teacher("Florence", "Perraud", 9, [slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8])
-    # teacher5 = Teacher("Stephane", "Bonnevay", 10, [slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9, slot10, slot11, slot12])
-
-    # apm1 = Apm("Eric", "Judor", 11)
-    # apm2 = Apm("Anne", "Hathaway", 12)
-    # apm3 = Apm("Jonathan", "Coen", 13)
-    # apm4 = Apm("Robert", "De Nirot", 14)
-
-    # group1 = Group(teacher1, apm2, student1)
-    # group2 = Group(teacher1, apm1, student2)
-    # group3 = Group(teacher2, apm3, student3)
-    # group4 = Group(teacher2, apm4, student4)
-    # group5 = Group(teacher3, apm4, student5)
 
     for slot in slots:
         sm.addSlot(slot)
-
-    # sm.addGroup(group1)
-    # sm.addGroup(group2)
-    # sm.addGroup(group3)
-    # sm.addGroup(group4)
-    # sm.addGroup(group5)
-
-    # sm.addTeacher(teacher1)
-    # sm.addTeacher(teacher2)
-    # sm.addTeacher(teacher3)
-    # sm.addTeacher(teacher4)
-    # sm.addTeacher(teacher5)
 
     for i in range(10):
         sm.addGroup(groups[i])
