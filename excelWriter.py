@@ -21,8 +21,10 @@ class WriterExcel:
 
         hours = sorted(list(set([slot.getSlot().dayPeriod for slot in schedule.schedule])))
         days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
+        classes = sorted(list(set([slot.getSlot().classroom for slot in schedule.schedule])))
         dictDays = {day: i+2 for i, day in enumerate(days)}
         dictHours = {hour: i+2 for i, hour in enumerate(hours)}
+        dictClasses = {classroom: i+2 for i, classroom in enumerate(classes)}
 
         
 
@@ -31,13 +33,14 @@ class WriterExcel:
             for hour, column  in dictHours.items():
                 self.writeData(sheet, 1 + index, column, hour)
             for day, row in dictDays.items():
-                self.writeData(sheet, row + index, 1, day)
+                for classroom, row2 in dictClasses.items():
+                    self.writeData(sheet, len(dictClasses)*(row-2) + row2 + index , 1, f"{day} / {classroom}")
             self.writeData(sheet, index+1, 1, teacher.name)
             for constraint in teacher.constraints:
                 
-                self.writeData(sheet, dictDays[constraint.day] + index, dictHours[constraint.dayPeriod], "X", "000000")
+                self.writeData(sheet, len(dictClasses)*(dictDays[constraint.day]-2) + dictClasses[constraint.classroom] + index, dictHours[constraint.dayPeriod], "X", "000000")
                     
-            index += len(dictDays)+2
+            index += len(dictDays)*len(dictClasses)+2
 
 
 
@@ -48,17 +51,20 @@ class WriterExcel:
 
         hours = sorted(list(set([slot.getSlot().dayPeriod for slot in schedule.schedule])))
         days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
+        classes = sorted(list(set([slot.getSlot().classroom for slot in schedule.schedule])))
 
         dictDays = {day: i+2 for i, day in enumerate(days)}
         dictHours = {hour: i+2 for i, hour in enumerate(hours)}
+        dictClasses = {classroom: i+2 for i, classroom in enumerate(classes)}
         for hour, column  in dictHours.items():
             self.writeData(sheet, 1, column, hour)
         for day, row in dictDays.items():
-            self.writeData(sheet, row, 1, day)
+            for classroom, row2 in dictClasses.items():
+                self.writeData(sheet, len(dictClasses)*(row-2) + row2, 1, f"{day} / {classroom}")
 
         for slot in schedule.schedule:
             if slot.getGroup() != None:
-                self.writeData(sheet, dictDays[slot.getSlot().day], dictHours[slot.getSlot().dayPeriod], f"{slot.getTeacher().name}  / {slot.getGroup().getStudent().name} / {slot.getGroup().getTutor().name} / {slot.getGroup().getApm().name}")
+                self.writeData(sheet, len(dictClasses)*(dictDays[slot.getSlot().day]-2) + dictClasses[slot.getSlot().classroom], dictHours[slot.getSlot().dayPeriod], f"{slot.getTeacher().name}  / {slot.getGroup().getStudent().name} / {slot.getGroup().getTutor().name} / {slot.getGroup().getApm().name}")
 
 
 
@@ -68,9 +74,11 @@ if __name__ == "__main__":
     slots = list()
     days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
     hours = ["08:50", "09:40", "10:30", "11:20", "14:00", "14:50", "15:40", "16:30"]
+    classes = ["salle 01", "salle 02", "salle 03"]
 
     for day in days:
-        for hour in hours: slots.append(EmptySlot(day, hour))
+        for hour in hours: 
+            for classe in classes: slots.append(EmptySlot(day, hour, classe))  
 
     # student1 = Person("Allan", "Des Courtils", 1)
     # student2 = Person("Thibault", "Thomas", 2)
@@ -112,32 +120,36 @@ if __name__ == "__main__":
 
     import names
 
+    nb_students = 24
+    nb_teachers = 10
+    nb_apms = 24
+
     students = list()
-    for i in range(10):
+    for i in range(nb_students):
         students.append(Person(names.get_first_name(), names.get_last_name(), i))
 
-    import copy
-
     teachers = list()
-    for i in range(10):
+    for i in range(nb_teachers):
         contraintes = list()
         for j in range(random.randint(0, len(slots)-1)):
             contraintes.append(slots[random.randint(0, len(slots)-1)])
-        teachers.append(Teacher(names.get_first_name(), names.get_last_name(), i+10, contraintes))
+        teachers.append(Teacher(names.get_first_name(), names.get_last_name(), i+nb_students, contraintes))
 
     apms = list()
-    for i in range(10):
-        apms.append(Apm(names.get_first_name(), names.get_last_name(), i+20))
+    for i in range(nb_apms):
+        apms.append(Apm(names.get_first_name(), names.get_last_name(), i+nb_students+nb_teachers))
     
     groups = list()
-    for i in range(10):
+    for i in range(nb_students):
         groups.append(Group(teachers[random.randint(0, 9)], apms[random.randint(0, 9)], students[i]))
 
     for slot in slots:
         sm.addSlot(slot)
 
-    for i in range(10):
+    for i in range(nb_students):
         sm.addGroup(groups[i])
+
+    for i in range(nb_teachers):
         sm.addTeacher(teachers[i])
 
     

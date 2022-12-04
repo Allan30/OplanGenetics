@@ -68,15 +68,6 @@ class Group:
 
     def getStudent(self): return self.student
 
-    def writeIn(self, file):
-        file.write(self.tutor.name + " " + self.tutor.surname + " " + self.tutor.id)
-        # "┌──────────────────────────────┬───────┬───────┬───────┬───────┬───────┐\n"\
-        # "│       │ 08:00 │ 09:45 │ 11:30 │ 14:00 │ 15:45 │\n"\
-        # "├──────────────────────────────┼───────┼───────┼───────┼───────┼───────┤\n"\
-        print("┌──────────────────────────────┬───────┬───────┬───────┬───────┬───────┐")
-        print("│ Lundi │ 08:00 │ 08:50 │ 09:40 │ 10:30 │ 11:20 │ 12:10 │ 14:00 │ 14:50 │ 15:40 │ 16:30 │ 17:20 |")
-        print("├──────────────────────────────┼───────┼───────┼───────┼───────┼───────┤")
-
 class ScheduleManager:
 
     def __init__(self):
@@ -143,19 +134,28 @@ class Schedule:
         """
         score = 0
         prevDay = "None"
+        prevHour = "None"
         emptySlot = False
+        teachersOfTheHour = list()
         for index, slot in enumerate(self.schedule):
             currentDay = slot.getSlot().day
+            currentHour = slot.getSlot().dayPeriod
             if not slot.getTeacher(): emptySlot = True
             else: 
-                if currentDay == prevDay:
+                if currentHour != prevHour: 
+                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor()]
+                else: 
+                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour: score -= 50
+                    teachersOfTheHour.append(slot.getTeacher())
+                    teachersOfTheHour.append(slot.getGroup().getTutor())
+                if currentDay == prevDay and currentHour != prevHour:
                     if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getApm() == slot.getGroup().getApm(): score += 100
 
                     if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getTutor() == slot.getGroup().getTutor(): score += 2
 
                     if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getTeacher() == slot.getTeacher(): score += 10
                 
-                else: 
+                elif currentDay != prevDay: 
                     if not emptySlot: score += 10
                     emptySlot = False
                 
@@ -163,6 +163,7 @@ class Schedule:
                 if slot.getTeacher().isFree(slot.getSlot()): score += 50
 
             prevDay = currentDay
+            prevHour = currentHour
 
         # nextIndex = 1
         # for index, slot in enumerate(self.schedule):
@@ -183,10 +184,20 @@ class Schedule:
         return score
 
     def isCorrect(self):
+        teachersOfTheHour = list()
+        prevHour = "None"
         for slot in self.schedule:
+            currentHour = slot.getSlot().dayPeriod
             if slot.getTeacher():
                 if not slot.getGroup().getTutor().isFree(slot.getSlot()): return False
                 if not slot.getTeacher().isFree(slot.getSlot()): return False
+                if currentHour != prevHour: 
+                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor()]
+                else: 
+                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour: return False
+                    teachersOfTheHour.append(slot.getTeacher())
+                    teachersOfTheHour.append(slot.getGroup().getTutor())
+            prevHour = currentHour
         return True
 
     def getLenSchedule(self): return len(self.schedule)
@@ -260,7 +271,7 @@ class GA:
 
     def __init__(self, scheduleManager):
         self.scheduleManager = scheduleManager
-        self.mutation1Percent = 0.5
+        self.mutation1Percent = 0.8
         self.mutation2Percent = 0.5
         self.tournamentSize = 5
         self.elitism = True
@@ -360,9 +371,11 @@ if __name__ == '__main__':
     slots = list()
     days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
     hours = ["08:50", "09:40", "10:30", "11:20", "14:00", "14:50", "15:40", "16:30"]
+    classes = ["salle 01", "salle 02", "salle 03", "salle 04"]
 
     for day in days:
-        for hour in hours: slots.append(EmptySlot(day, hour))  
+        for hour in hours: 
+            for classe in classes: slots.append(EmptySlot(day, hour, classe))  
         
     import names
 
