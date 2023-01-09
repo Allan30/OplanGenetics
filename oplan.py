@@ -143,11 +143,12 @@ class Schedule:
             if not slot.getTeacher(): emptySlot = True
             else: 
                 if currentHour != prevHour: 
-                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor()]
+                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor(), slot.getGroup().getApm()]
                 else: 
-                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour: score -= 50
+                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour or slot.getGroup().getApm() in teachersOfTheHour: score -= 1000
                     teachersOfTheHour.append(slot.getTeacher())
                     teachersOfTheHour.append(slot.getGroup().getTutor())
+                    teachersOfTheHour.append(slot.getGroup().getApm())
                 if currentDay == prevDay and currentHour != prevHour:
                     if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getApm() == slot.getGroup().getApm(): score += 100
 
@@ -192,13 +193,33 @@ class Schedule:
                 if not slot.getGroup().getTutor().isFree(slot.getSlot()): return False
                 if not slot.getTeacher().isFree(slot.getSlot()): return False
                 if currentHour != prevHour: 
-                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor()]
+                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor(), slot.getGroup().getApm()]
                 else: 
-                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour: return False
+                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour or slot.getGroup().getApm() in teachersOfTheHour: return False
                     teachersOfTheHour.append(slot.getTeacher())
                     teachersOfTheHour.append(slot.getGroup().getTutor())
+                    teachersOfTheHour.append(slot.getGroup().getApm())
             prevHour = currentHour
         return True
+
+    def getErrors(self):
+        errors = list()
+        teachersOfTheHour = list()
+        prevHour = "None"
+        for slot in self.schedule:
+            currentHour = slot.getSlot().dayPeriod
+            if slot.getTeacher():
+                if not slot.getGroup().getTutor().isFree(slot.getSlot()): errors.append(f"{slot.getGroup().getTutor().id} Tutor not free")
+                if not slot.getTeacher().isFree(slot.getSlot()): errors.append(f"{slot.getTeacher().id} Teacher not free")
+                if currentHour != prevHour: 
+                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor(), slot.getGroup().getApm()]
+                else: 
+                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour or slot.getGroup().getApm() in teachersOfTheHour: errors.append("Teacher already in the classes")
+                    teachersOfTheHour.append(slot.getTeacher())
+                    teachersOfTheHour.append(slot.getGroup().getTutor())
+                    teachersOfTheHour.append(slot.getGroup().getApm())
+            prevHour = currentHour
+        return errors
 
     def getLenSchedule(self): return len(self.schedule)
 
@@ -271,8 +292,8 @@ class GA:
 
     def __init__(self, scheduleManager):
         self.scheduleManager = scheduleManager
-        self.mutation1Percent = 0.8
-        self.mutation2Percent = 0.5
+        self.mutation1Percent = 0.2
+        self.mutation2Percent = 0.2
         self.tournamentSize = 5
         self.elitism = True
 

@@ -1,4 +1,5 @@
 import openpyxl
+from tqdm import tqdm
 from oplan import *
 
 class WriterExcel:
@@ -35,7 +36,7 @@ class WriterExcel:
             for day, row in dictDays.items():
                 for classroom, row2 in dictClasses.items():
                     self.writeData(sheet, len(dictClasses)*(row-2) + row2 + index , 1, f"{day} / {classroom}")
-            self.writeData(sheet, index+1, 1, teacher.name)
+            self.writeData(sheet, index+1, 1, teacher.id)
             for constraint in teacher.constraints:
                 
                 self.writeData(sheet, len(dictClasses)*(dictDays[constraint.day]-2) + dictClasses[constraint.classroom] + index, dictHours[constraint.dayPeriod], "X", "000000")
@@ -64,7 +65,7 @@ class WriterExcel:
 
         for slot in schedule.schedule:
             if slot.getGroup() != None:
-                self.writeData(sheet, len(dictClasses)*(dictDays[slot.getSlot().day]-2) + dictClasses[slot.getSlot().classroom], dictHours[slot.getSlot().dayPeriod], f"{slot.getTeacher().name}  / {slot.getGroup().getStudent().name} / {slot.getGroup().getTutor().name} / {slot.getGroup().getApm().name}")
+                self.writeData(sheet, len(dictClasses)*(dictDays[slot.getSlot().day]-2) + dictClasses[slot.getSlot().classroom], dictHours[slot.getSlot().dayPeriod], f"{slot.getTeacher().id}  / {slot.getGroup().getStudent().id} / {slot.getGroup().getTutor().id} / {slot.getGroup().getApm().id}")
 
 
 
@@ -130,10 +131,12 @@ if __name__ == "__main__":
 
     teachers = list()
     for i in range(nb_teachers):
-        contraintes = list()
-        for j in range(random.randint(0, len(slots)-1)):
-            contraintes.append(slots[random.randint(0, len(slots)-1)])
-        teachers.append(Teacher(names.get_first_name(), names.get_last_name(), i+nb_students, contraintes))
+        contraintes = set()
+        for j in range(random.randint(0, (len(days)*len(hours))//3-1)):
+            randomIndex = random.choice([multClass*3 for multClass in range(len(days)*len(hours)-1)])
+            for k in range(len(classes)):
+                contraintes.add(slots[randomIndex + k])
+        teachers.append(Teacher(names.get_first_name(), names.get_last_name(), i+nb_students, list(contraintes)))
 
     apms = list()
     for i in range(nb_apms):
@@ -141,7 +144,7 @@ if __name__ == "__main__":
     
     groups = list()
     for i in range(nb_students):
-        groups.append(Group(teachers[random.randint(0, 9)], apms[random.randint(0, 9)], students[i]))
+        groups.append(Group(teachers[random.randint(0, nb_teachers-1)], apms[random.randint(0, nb_apms-1)], students[i]))
 
     for slot in slots:
         sm.addSlot(slot)
@@ -161,10 +164,11 @@ if __name__ == "__main__":
     #pop.getBestScore()._toString()
 
     ga = GA(sm)
-    for i in range(0, 100):
+    for i in tqdm(range(0, 100)):
         pop = ga.evolvePopulation(pop)
 
     print(pop.getBestScore().isCorrect())
+    print(pop.getBestScore().getErrors())
     writer = WriterExcel("test.xlsx")
     writer.writeSchedule(pop.getBestScore())
     writer.writeConstraintes(sm.teachers, pop.getBestScore())
