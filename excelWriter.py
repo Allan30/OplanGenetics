@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     nb_students = 24
     nb_teachers = 10
-    nb_apms = 24
+    nb_apms = 35
 
     students = list()
     for i in range(nb_students):
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     teachers = list()
     for i in range(nb_teachers):
         contraintes = set()
-        for j in range(random.randint(0, (len(days)*len(hours))//3-1)):
+        for j in range(random.randint(0, (len(days)*len(hours))//2-1)):
             randomIndex = random.choice([multClass*3 for multClass in range(len(days)*len(hours)-1)])
             for k in range(len(classes)):
                 contraintes.add(slots[randomIndex + k])
@@ -164,8 +164,28 @@ if __name__ == "__main__":
     #pop.getBestScore()._toString()
 
     ga = GA(sm)
+    bestScores = list()
+    years = list()
+    pop = ga.evolvePopulation(pop)
+    years.append(0)
+    bestScores.append((pop.getBestScore().getScore()))
     for i in tqdm(range(0, 100)):
         pop = ga.evolvePopulation(pop)
+        years.append(i+1)
+        bestScores.append(pop.getBestScore().getScore())
+
+    bestPop = pop.getBestScore()
+    bestPop._toString()
+    print(bestPop.isCorrect())
+
+    
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    ax.plot(years, bestScores)
+
+    plt.show()
 
     print(pop.getBestScore().isCorrect())
     print(pop.getBestScore().getErrors())
