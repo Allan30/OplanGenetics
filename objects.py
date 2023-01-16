@@ -1,48 +1,139 @@
 import random
+from collections import OrderedDict
 
 CLASSROOMS = False
 
-days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
-hours = ["08:50", "09:40", "10:30", "11:20", "14:00", "14:50", "15:40", "16:30"]
-classes = ["salle 01", "salle 02", "salle 03"]
-
-def slotsGenerator():
-    slots = list()
-    for day in days:
-        for hour in hours: 
-            for classe in classes: slots.append(EmptySlot(day, hour, classe)) 
-    return slots
-
-class EmptySlot:
-
-    def __init__(self, day, dayPeriod, classroom=None):
-        self.day = day
-        self.dayPeriod = dayPeriod
-        self.classroom = classroom
+DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
+HOURS = ["08:50", "09:40", "10:30", "11:20", "14:00", "14:50", "15:40", "16:30"]
+CLASSES = ["salle 01", "salle 02", "salle 03"]
+PERIODS = [(day, hour) for day in DAYS for hour in HOURS]
+        
 
 class Slot:
 
-    def __init__(self, emptySlot, group, teacher):
-        self.emptySlot = emptySlot
-        self.group = group
-        self.teacher = teacher
+    def __init__(self, period):
+        self.period = period
+        self.defenses = list()
 
-    def getSlot(self): return self.emptySlot
+    def add(self, group, teacher): self.defenses.append((group, teacher))
 
-    def getGroup(self): return self.group
+    def addDefense(self, defense): self.defenses.append(defense)
 
-    def getTeacher(self): return self.teacher
+    def getCopy(self): 
+        newSlot = Slot(self.period)
+        for defense in self.defenses: newSlot.addDefense(defense)
+        return newSlot
 
-    def setGroup(self, group): self.group = group
+    def popRandomDefense(self): 
+        if len(self.defenses) == 0: return None
+        return self.defenses.pop(random.randint(0, len(self.defenses)-1))
 
-    def setTeacher(self, teacher): self.teacher = teacher
+    def getApms(self): return [group.getApm() for group, _ in self.defenses]
 
-    def canISwitchTheSlotWith(self, slot):
-        if slot.getGroup() == None and self.group == None: return False
-        if slot.getGroup() == None: return self.teacher.isFree(slot.getSlot()) and self.group.getTutor().isFree(slot.getSlot()) 
-        if self.group == None: return slot.getGroup().getTutor().isFree(self.getSlot()) and slot.getTeacher().isFree(self.getSlot())
-        return self.group.getTutor().isFree(slot.getSlot()) and self.teacher.isFree(slot.getSlot()) and slot.getGroup().getTutor().isFree(self.getSlot()) and slot.getTeacher().isFree(self.getSlot())
-    
+    def getAllTeachers(self): 
+        teachers = list()
+        for group, teacher in self.defenses:
+            teachers.append(teacher)
+            teachers.append(group.getTutor())
+        
+        return teachers
+
+    def isFull(self): 
+        return len(self.defenses) >= self.period.nbClassrooms
+
+    def isEmpty(self): return len(self.defenses) == 0
+
+    def isWrong(self):
+        for index, defense in enumerate(self.defenses):
+            group, teacher = defense
+            tutor = group.getTutor()
+            apm = group.getApm()
+            if not teacher.isFree(self.period): return True
+            if not group.getTutor().isFree(self.period): return True
+            for g, t in self.defenses[index+1:]:
+                if t == teacher or t == tutor or g.getTutor() == teacher or g.getTutor() == tutor or apm == g.getApm(): return True
+        return False
+
+    def teachersOrTutorsInSlot(self, teachers):
+        numberOfTeachers = 0
+        myTeachers = self.getAllTeachers()
+        for t in teachers:
+            if t in myTeachers: numberOfTeachers += 1
+        return numberOfTeachers
+
+    def apmInSlot(self, apms):
+        numberOfApm = 0
+        myApm = self.getApms()
+        for a in apms:
+            if a in myApm: numberOfApm += 1
+        return numberOfApm
+
+    def switchTeacher(self, indexDefense, newTeacher):
+        if newTeacher.isFree(self.period):
+            self.defenses[indexDefense] = (self.defenses[indexDefense][0], newTeacher)
+            return True
+        return False
+
+    def switchADefenseWithTheSlot(self, slot):
+        defenseExt = slot.popRandomDefense()
+        defenseInt = self.popRandomDefense()
+        GROUP = 0
+        TEACHER = 1
+
+        switched = True
+
+        if defenseExt: 
+            if not defenseInt:
+                if defenseExt[GROUP].getTutor().isFree(self.period) and defenseExt[TEACHER].isFree(self.period): 
+                    self.addDefense(defenseExt)
+                    switched = True
+                else: switched = False
+            else:
+                if self.apmInSlot([defenseExt[GROUP].getApm()]) > 0: switched = False
+                elif slot.apmInSlot([defenseInt[GROUP].getApm()]) > 0: switched = False
+                elif self.teachersOrTutorsInSlot([defenseExt[GROUP].getTutor(), defenseExt[TEACHER]]) > 0: switched = False
+                elif slot.teachersOrTutorsInSlot([defenseInt[GROUP].getTutor(), defenseInt[TEACHER]]) > 0: switched = False
+                elif not (defenseExt[GROUP].getTutor().isFree(self.period) and defenseExt[TEACHER].isFree(self.period)): switched = False
+                elif not (defenseInt[GROUP].getTutor().isFree(slot.period) and defenseInt[TEACHER].isFree(slot.period)): switched = False
+                else:
+                    self.addDefense(defenseExt)
+                    slot.addDefense(defenseInt)
+                    switched = True
+        
+        else:
+            if defenseInt:
+                if defenseInt[GROUP].getTutor().isFree(slot.period) and defenseInt[TEACHER].isFree(slot.period): 
+                    slot.addDefense(defenseInt)
+                    switched = True
+                else: switched = False
+            else:
+                switched = True
+
+        if not switched: 
+            if defenseExt: slot.addDefense(defenseExt)
+            if defenseInt: self.addDefense(defenseInt)
+
+        return switched
+
+    def isEqual(self, slot): 
+        if not self.period.isEqual(slot.period): return False
+        if len(self.defenses) != len(slot.defenses): return False
+
+        for defense in self.defenses:
+            if defense not in slot.defenses: return False
+
+
+        return True
+
+class Period:
+
+    def __init__(self, day, hour, nbClassrooms):
+        self.day = day
+        self.hour = hour
+        self.nbClassrooms = nbClassrooms
+
+    def isEqual(self, period):
+        return self.day == period.day and self.hour == period.hour
 
 class Person:
 
@@ -57,7 +148,11 @@ class Teacher(Person):
         super().__init__(name, surname, id)
         self.constraints = constraints
 
-    def isFree(self, slot): return slot not in self.constraints
+    def isFree(self, period): 
+        return (period.day, period.hour) not in self.constraints
+
+    def isFreeTuple(self, period):
+        return period not in self.constraints
 
     def getRandomSlot(self, constraints):
         try:
@@ -86,25 +181,32 @@ class Group:
 class ScheduleManager:
 
     def __init__(self):
-        self.slots = list()
+        self.periods = list()
         self.groups = list()
         self.teachers = list()
 
-    def addSlot(self, slot): self.slots.append(slot)
+    def addPeriod(self, period): self.periods.append(period)
 
     def addGroup(self, group): self.groups.append(group)
 
     def addTeacher(self, teacher): self.teachers.append(teacher)
 
-    def getSlot(self, index): return self.slots[index]
+    def getSlot(self, index): return Slot(self.periods[index])
+
+    def getPeriod(self, index): return self.periods[index]
 
     def getGroup(self, index): return self.groups[index]
 
+    def getGroups(self): return self.groups
+
     def getTeacher(self, index): return self.teachers[index]
 
-    def getRandomTeacherWithout(self, teacher): return random.choice([i for i in self.teachers if i != teacher])
+    def getRandomTeacher(self, slot, noTeacher=None): 
+        if noTeacher:
+            return random.choice([i for i in self.teachers if i.isFree(slot.period) and i != noTeacher])
+        return random.choice([i for i in self.teachers if i.isFree(slot.period)])
 
-    def getNumberSlots(self): return len(self.slots)
+    def getNumberSlots(self): return len(self.periods)
 
     def getNumberGroups(self): return len(self.groups)
 
@@ -123,149 +225,99 @@ class Schedule:
 
     def getSlot(self, index): return self.schedule[index]
 
+    def copySlot(self, index): return self.schedule[index].getCopy()
+
     def setSlot(self, index, slot): 
         self.schedule[index] = slot
         self.score = 0
 
     def generateIndividual(self):
-        #génére le planning de façon aléatoire, sans tenir compte des contraintes professeurs
         for index in range(self.scheduleManager.getNumberSlots()): 
             slot = self.scheduleManager.getSlot(index)
-            self.setSlot(index, Slot(slot, None, None))
-        
-        alreadyChooseIndex = list()
-        for index in range(self.scheduleManager.getNumberGroups()):
-            scheduleIndex = random.choice([i for i in range(self.scheduleManager.getNumberSlots()) if i not in alreadyChooseIndex])
-            teacher = self.scheduleManager.getRandomTeacherWithout(self.scheduleManager.getGroup(index).getTutor())
-            self.setSlot(scheduleIndex, Slot(self.getSlot(scheduleIndex).getSlot(), self.scheduleManager.getGroup(index), teacher))
-            alreadyChooseIndex.append(scheduleIndex)
+            self.setSlot(index, slot)
 
-    def getLikness(self, otherSchedule):
-        for index in range(len(self.schedule)):
-            pass
+        constraints = dict()
+        dictConstraints = dict()
+        for index, period in enumerate(PERIODS): constraints[period] = 0; dictConstraints[period] = index
+        for teacher in self.scheduleManager.teachers:
+            for constraint in teacher.constraints:
+                constraints[constraint] += 1
+
+        constraints = OrderedDict(sorted(constraints.items(), key=lambda c: c[1]))  
+
+        for group in self.scheduleManager.getGroups():
+            for period, _ in constraints.items():   
+                slot = self.schedule[dictConstraints[period]]
+                if group.getTutor().isFreeTuple(period) and not slot.isFull():
+                    teacher = self.scheduleManager.getRandomTeacher(slot, group.getTutor())
+                    slot.add(group, teacher)
+                    break
+                
+
+    def getLikeness(self, otherSchedule):
+        likeness = list()
+        for i in range(len(DAYS)):
+            allSlotInDayExist = True
+            for j in range(len(HOURS)):
+                index = i*len(HOURS)+j
+                slotInDayExist = False
+                for j2 in range(len(HOURS)):
+                    index2 = i*len(HOURS)+j2
+                    if self.getSlot(index).isEqual(otherSchedule.getSlot(index2)): slotInDayExist = True; break
+                if not slotInDayExist: allSlotInDayExist = False; break
+            if allSlotInDayExist: likeness.append(DAYS[i])
+
+        for j in range(len(HOURS)):
+            allSlotInHourExist = True
+            for i in range(len(DAYS)):
+                index = i*len(HOURS)+j
+                slotInHourExist = False
+                for i2 in range(len(DAYS)):
+                    index2 = i2*len(HOURS)+j
+                    if self.getSlot(index).isEqual(otherSchedule.getSlot(index2)): slotInHourExist = True; break
+                if not slotInHourExist: allSlotInHourExist = False; break
+            if allSlotInHourExist: likeness.append(HOURS[j])
+
+        return likeness
             
         
     def getScore(self):
-        """
-        suivi des soutenances de meme Map : 100
-        jour complet : 10
-        suivi des soutenances de meme tuteur : 2
-        contrainte pas respecte : -1
-        """
         score = 0
-        prevDay = "None"
-        prevHour = "None"
-        emptySlot = False
-        teachersOfTheHour = list()
+        prevDay = self.schedule[0].period.day
+        slotStrik = 0
         for index, slot in enumerate(self.schedule):
-            currentDay = slot.getSlot().day
-            currentHour = slot.getSlot().dayPeriod
-            if not slot.getTeacher(): emptySlot = True
-            else: 
-                if currentHour != prevHour: 
-                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor(), slot.getGroup().getApm()]
-                else: 
-                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour or slot.getGroup().getApm() in teachersOfTheHour: score -= 100
-                    teachersOfTheHour.append(slot.getTeacher())
-                    teachersOfTheHour.append(slot.getGroup().getTutor())
-                    teachersOfTheHour.append(slot.getGroup().getApm())
-                if currentDay == prevDay and currentHour != prevHour:
-                    if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getApm() == slot.getGroup().getApm(): score += 100
-
-                    if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getGroup().getTutor() == slot.getGroup().getTutor(): score += 2
-
-                    if index > 0 and self.schedule[index-1].getTeacher() and self.schedule[index-1].getTeacher() == slot.getTeacher(): score += 10
-                
-                elif currentDay != prevDay: 
-                    if not emptySlot: score += 10
-                    emptySlot = False
-                
-                if slot.getGroup().getTutor().isFree(slot.getSlot()): score += 50
-                if slot.getTeacher().isFree(slot.getSlot()): score += 50
+            currentDay = slot.period.day
+            if not slot.isEmpty():
+                slotStrik += len(slot.defenses)
+            if currentDay == prevDay:
+                if index > 0:
+                    score += 10*self.schedule[index-1].teachersOrTutorsInSlot(slot.getAllTeachers())
+                    score += 1000*self.schedule[index-1].apmInSlot(slot.getApms())
+            
+            elif currentDay != prevDay: 
+                score += slotStrik*30
+                slotStrik = 0
+            
+            if slot.isWrong(): score -= 100
 
             prevDay = currentDay
-            prevHour = currentHour
 
         self.score = score
         return score
 
     def isCorrect(self):
-        teachersOfTheHour = list()
-        prevHour = "None"
         for slot in self.schedule:
-            currentHour = slot.getSlot().dayPeriod
-            if slot.getTeacher():
-                if not slot.getGroup().getTutor().isFree(slot.getSlot()): return False
-                if not slot.getTeacher().isFree(slot.getSlot()): return False
-                if currentHour != prevHour: 
-                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor(), slot.getGroup().getApm()]
-                else: 
-                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour or slot.getGroup().getApm() in teachersOfTheHour: return False
-                    teachersOfTheHour.append(slot.getTeacher())
-                    teachersOfTheHour.append(slot.getGroup().getTutor())
-                    teachersOfTheHour.append(slot.getGroup().getApm())
-            prevHour = currentHour
+            if slot.isWrong(): return False
         return True
 
     def getErrors(self):
         errors = list()
-        teachersOfTheHour = list()
-        prevHour = "None"
-        for slot in self.schedule:
-            currentHour = slot.getSlot().dayPeriod
-            if slot.getTeacher():
-                if not slot.getGroup().getTutor().isFree(slot.getSlot()): errors.append(f"{slot.getGroup().getTutor().id} Tutor not free")
-                if not slot.getTeacher().isFree(slot.getSlot()): errors.append(f"{slot.getTeacher().id} Teacher not free")
-                if currentHour != prevHour: 
-                    teachersOfTheHour = [slot.getTeacher(), slot.getGroup().getTutor(), slot.getGroup().getApm()]
-                else: 
-                    if slot.getTeacher() in teachersOfTheHour or slot.getGroup().getTutor() in teachersOfTheHour or slot.getGroup().getApm() in teachersOfTheHour: errors.append("Teacher already in the classes")
-                    teachersOfTheHour.append(slot.getTeacher())
-                    teachersOfTheHour.append(slot.getGroup().getTutor())
-                    teachersOfTheHour.append(slot.getGroup().getApm())
-            prevHour = currentHour
         return errors
 
     def getLenSchedule(self): return len(self.schedule)
 
-    def contains(self, group):
-        for slot in self.schedule:
-            if slot != None and slot.getGroup() == group: return True
-        return False
-
-    def getSlotsOfGroups(self):
-        groups = list()
-        for index, slot in enumerate(self.schedule):
-            if slot.getTeacher():
-                groups.append((index, slot))
-
-        return groups
-
     def _toString(self):
-        print("==============Score : ", self.getScore(), "====================")
-        prevDay = "None"
-        prevPeriod = "None"
-        for slot in self.schedule:
-            currentDay = slot.getSlot().day
-            currentPeriod = slot.getSlot().dayPeriod
-            if currentDay != prevDay:
-                print(slot.getSlot().day, " : ")
-            if CLASSROOMS:
-                if currentPeriod != prevPeriod: 
-                    print("    ", slot.getSlot().dayPeriod, " : ")
-                    continue
-                else:
-                    if slot.getTeacher() != None:
-                        print("     > ", slot.getSlot().classroom, " : ", slot.getTeacher().id, " / ", slot.getGroup().student.id)
-                    if slot.getTeacher() == None: 
-                        print("     > ", slot.getSlot().classroom, " : None")
-            else:
-                if slot.getTeacher() != None:
-                    print("     > ", slot.getSlot().dayPeriod, " : ", slot.getTeacher().id, " / ", slot.getGroup().student.id)
-                if slot.getTeacher() == None: 
-                    print("     > ", slot.getSlot().dayPeriod, " : None")
-            prevDay = slot.getSlot().day
-            prevPeriod = slot.getSlot().dayPeriod
+        pass
 
 class Population:
 
@@ -281,7 +333,11 @@ class Population:
 
     def saveSchedule(self, index, schedule): self.schedules[index] = schedule
 
-    def getSchedule(self, index): return self.schedules[index]
+    def getSchedule(self, index): 
+        try:
+            return self.schedules[index]
+        except:
+            return None
 
     def getBestScore(self): 
         bestScore = self.schedules[0]
@@ -292,3 +348,17 @@ class Population:
         return bestScore
 
     def populationSize(self): return len(self.schedules)
+
+    def likenessBetweenSchedules(self): 
+        parents = list() #p1, p2, indiceRessemblance
+        for i in range(self.populationSize()-1):
+            bestLikeness = list()
+            bestJ = i
+            scheduleI = self.getSchedule(i)
+            for j in range(i+1, self.populationSize()):
+                currentLikeness = scheduleI.getLikeness(self.getSchedule(j))
+                if len(currentLikeness) > len(bestLikeness) and len(currentLikeness) < len(DAYS)+len(HOURS):
+                    bestLikeness = currentLikeness
+                    bestJ = j
+            parents.append([scheduleI, self.getSchedule(bestJ), bestLikeness])
+        return sorted(parents, key=lambda x: len(x[2]), reverse=True)

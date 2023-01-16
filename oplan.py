@@ -7,109 +7,74 @@ class GA:
 
     def __init__(self, scheduleManager):
         self.scheduleManager = scheduleManager
-        self.mutation1Percent = 1
-        self.mutation2Percent = 1
+        self.mutation1Percent = 0.8
+        self.mutation2Percent = 0.8
         self.tournamentSize = 5
         self.elitism = True
+        self.elitismOffset = 0
 
     def evolvePopulation(self, population):
-        newPopulation = Population(self.scheduleManager, population.populationSize(), False)
-        elitismOffset = 0
-        if self.elitism:
-            newPopulation.saveSchedule(0, population.getBestScore())
-            elitismOffset = 1
         
-        for i in range(elitismOffset, newPopulation.populationSize()):
-            parent1 = self.selectionTournament(population)
-            parent2 = self.selectionTournament(population)
-            child = self.crossover(parent1, parent2)
-            newPopulation.saveSchedule(i, child)
         
-        for i in range(elitismOffset, newPopulation.populationSize()):
+        newPopulation = self.crossoverV2(population)
+        
+        for i in range(self.elitismOffset, newPopulation.populationSize()):
             self.mutate(newPopulation.getSchedule(i))
         
         return newPopulation
 
-    def crossover(self, parent1, parent2):
-        child = Schedule(self.scheduleManager)
+    def crossoverV2(self, population):
+        newPopulation = Population(self.scheduleManager, population.populationSize(), False)
+        if self.elitism:
+            newPopulation.saveSchedule(0, population.getBestScore())
+            self.elitismOffset = 1
 
-        splitPos = random.randint(0, self.scheduleManager.getNumberGroups()-1)
+        links = population.likenessBetweenSchedules()
+        index = self.elitismOffset
+        for parent1, parent2, likenesses in links:
+            child1 = Schedule(self.scheduleManager)
+            child2 = Schedule(self.scheduleManager)
 
-        for i in range(child.getLenSchedule()):
-            child.setSlot(i, Slot(self.scheduleManager.getSlot(i), None, None))
+            for i in range(self.scheduleManager.getNumberSlots()):
+                child1.setSlot(i, self.scheduleManager.getSlot(i))
+                child2.setSlot(i, self.scheduleManager.getSlot(i))
 
-        slots1 = parent1.getSlotsOfGroups()
-        slots2 = parent2.getSlotsOfGroups()
+                period = self.scheduleManager.getPeriod(i)
+                if period.day in likenesses or period.hour in likenesses:
+                    child1.setSlot(i, parent1.copySlot(i))
+                    child2.setSlot(i, parent2.copySlot(i))
+                
+                else: 
+                    child1.setSlot(i, parent2.copySlot(i))
+                    child2.setSlot(i, parent1.copySlot(i))
 
-        random.shuffle(slots1)
-        random.shuffle(slots2)
+            newPopulation.saveSchedule(index, child1)
+            index += 1
+            if index >= population.populationSize(): break
+            newPopulation.saveSchedule(index, child2)
+            index += 1
+            if index >= population.populationSize(): break
 
-        for i in range(splitPos):
-            index, currentSlot = slots1[i]
-            child.getSlot(index).setGroup(currentSlot.getGroup())
-            child.getSlot(index).setTeacher(currentSlot.getTeacher())
-
-        for index, slot in slots2:
-            if not child.contains(slot.getGroup()):
-                if child.getSlot(index).getGroup():
-                    j = random.randint(0, child.getLenSchedule()-1)
-                    while child.getSlot(j).getTeacher() != None: #ajout vérification dispo enseignant, tuteur et maitre de stage
-                        j = random.randint(0, child.getLenSchedule()-1)
-                    child.getSlot(j).setGroup(slot.getGroup())
-                    child.getSlot(j).setTeacher(slot.getTeacher())
-                else:
-                    child.getSlot(index).setGroup(slot.getGroup())
-                    child.getSlot(index).setTeacher(slot.getTeacher())
-        
-        return child
-
-    def crossoverV2(self):
-        pass
-
-    def likenessBetweenSchedules(self): 
-        parents = list() #p1, p2, indiceRessemblance
-        for i in range(len(self.population)):
-            bestLikeness = 0
-            bestJ = i+1
-            for j in range(i+1, len(self.population)):
-                currentLikeness = self.population[i].getLikeness(self.population[j])
-                if currentLikeness > bestLikeness:
-                    bestLikeness = currentLikeness
-                    bestJ = j
-            parents.append([self.population[i], self.population[bestJ], bestLikeness])
-        return sorted(parents, key=lambda x: x[2], reverse=True)
+        return newPopulation
 
     def mutate(self, schedule):
         for schedulePos1 in range(schedule.getLenSchedule()):
+            slot1 = schedule.getSlot(schedulePos1)
             #première mutation est l'échange de deux slots
             if random.random() < self.mutation1Percent:
                 schedulePos2 = random.randint(0, schedule.getLenSchedule()-1)
 
                 #verifier si l'echange est possible
-                slot1 = schedule.getSlot(schedulePos1)
+                
                 slot2 = schedule.getSlot(schedulePos2)
 
-                if slot1.canISwitchTheSlotWith(slot2):
-
-                    group1 = slot1.getGroup()
-                    group2 = slot2.getGroup()
-
-                    teacher1 = slot1.getTeacher()
-                    teacher2 = slot2.getTeacher()
-
-                    slot1.setGroup(group1)
-                    slot2.setGroup(group2)
-
-                    slot1.setTeacher(teacher1)
-                    slot2.setTeacher(teacher2)
+                slot1.switchADefenseWithTheSlot(slot2)
 
             #deuxième mutation est l'échange de professeur pour un groupe
-            if random.random() < self.mutation2Percent:
-                slot = schedule.getSlot(schedulePos1)
-                if slot.getTeacher() != None:
+            for indexDefense in range(len(slot1.defenses)):
+                if random.random() < self.mutation2Percent:
                     #verifier que les creneaux du nouveau professeur concorde et que le professeur est différent du tuteur
-                    slot.setTeacher(self.scheduleManager.getRandomTeacherWithout(slot.getGroup().getTutor()))
-                    schedule.setSlot(schedulePos1, slot)
+                    slot1.switchTeacher(indexDefense, self.scheduleManager.getRandomTeacher(slot1))
 
 
 
@@ -125,7 +90,7 @@ if __name__ == '__main__':
     
     sm = ScheduleManager()
 
-    slots = slotsGenerator()
+
         
     import names
 
@@ -137,10 +102,10 @@ if __name__ == '__main__':
 
     teachers = list()
     for i in range(10):
-        contraintes = list()
-        for j in range(random.randint(0, len(slots)-1)):
-            contraintes.append(slots[random.randint(0, len(slots)-1)])
-        teachers.append(Teacher(names.get_first_name(), names.get_last_name(), i+10, contraintes))
+        contraintes = set()
+        for j in range(random.randint(0, len(PERIODS)-1)):
+            contraintes.add(random.choice(PERIODS))
+        teachers.append(Teacher(names.get_first_name(), names.get_last_name(), i+10, list(contraintes)))
 
     apms = list()
     for i in range(10):
@@ -150,8 +115,8 @@ if __name__ == '__main__':
     for i in range(10):
         groups.append(Group(teachers[random.randint(0, 9)], apms[random.randint(0, 9)], students[i]))
 
-    for slot in slots:
-        sm.addSlot(slot)
+    for period in PERIODS:
+        sm.addPeriod(Period(period[0], period[1], len(CLASSES)))
 
     for i in range(10):
         sm.addGroup(groups[i])
@@ -173,7 +138,7 @@ if __name__ == '__main__':
         pop = ga.evolvePopulation(pop)
         years.append(i+1)
         bestScores.append(pop.getBestScore().getScore())
-        print(pop.getBestScore().isCorrect())
+        print(pop.getBestScore().isCorrect(), pop.getBestScore().getScore())
 
     bestPop = pop.getBestScore()
     bestPop._toString()
